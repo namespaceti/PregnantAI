@@ -17,9 +17,9 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
     // Simulate checking auth status
     // В реальном приложении здесь была бы проверка AsyncStorage или токенов
     setTimeout(() => {
-      // Для демо: считаем пользователя неавторизованным и пропускаем онбординг
+      // Для тестирования: запускаем онбординг
       dispatch(setAuthenticated(false));
-      dispatch(setOnboardingCompleted(true));
+      dispatch(setOnboardingCompleted(false)); // ВКЛЮЧАЕМ онбординг!
       dispatch(setLoading(false));
     }, 1000);
   }, [dispatch]);
@@ -32,10 +32,12 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
     );
   }
 
-  // Временно отключено: онбординг пропускается
+  // Если не завершен онбординг - показываем OnboardingScreen
+  if (!hasCompletedOnboarding) {
+    return <OnboardingScreen />;
+  }
 
-  // Если пользователь не авторизован, показываем экран входа
-  // Пока показываем главное приложение
+  // После онбординга показываем главное приложение
   return <View style={styles.container}>{children}</View>;
 };
 

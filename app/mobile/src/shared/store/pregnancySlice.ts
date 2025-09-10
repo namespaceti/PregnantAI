@@ -33,10 +33,16 @@ export const pregnancySlice = createSlice({
         state.pregnancy.day = action.payload.day;
       }
     },
+    updateUserPhysicalData: (state, action: PayloadAction<{ height?: number; prePregnancyWeight?: number }>) => {
+      if (state.pregnancy) {
+        if (action.payload.height) state.pregnancy.height = action.payload.height;
+        if (action.payload.prePregnancyWeight) state.pregnancy.prePregnancyWeight = action.payload.prePregnancyWeight;
+      }
+    },
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.isLoading = action.payload;
     },
   },
 });
 
-export const { setPregnancy, updateWeekDay, setLoading } = pregnancySlice.actions;
+export const { setPregnancy, updateWeekDay, updateUserPhysicalData, setLoading } = pregnancySlice.actions;

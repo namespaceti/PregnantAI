@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useDispatch } from 'react-redux';
 import { setOnboardingCompleted } from '../../../shared/store/authSlice';
+import { updateUserPhysicalData } from '../../../shared/store/pregnancySlice';
 
 const { width, height } = Dimensions.get('window');
 
@@ -30,6 +31,10 @@ interface OnboardingData {
   dueDate?: string;
   isFirstPregnancy?: boolean;
   interests: string[];
+  height?: number; // см - рост
+  prePregnancyWeight?: number; // кг - вес до беременности
+  weightMethod?: 'remember' | 'current'; // Помню вес ДО vs Знаю только сейчас
+  currentWeight?: number; // кг - текущий вес (если выбран weightMethod: 'current')
 }
 
 // Вставить перед компонентом OnboardingScreen:
@@ -199,7 +204,7 @@ export const OnboardingScreen: React.FC = () => {
   }, [currentScreen]);
 
   const updateProgress = (step: number) => {
-    const progress = step / 4;
+    const progress = step / 4; // Возвращаем обратно 4 экрана
     Animated.timing(progressAnim, {
       toValue: progress,
       duration: 500,
@@ -208,7 +213,7 @@ export const OnboardingScreen: React.FC = () => {
   };
 
   const nextScreen = () => {
-    if (currentScreen < 4) {
+    if (currentScreen < 4) { // Возвращаем обратно 4 экрана
       setCurrentScreen(currentScreen + 1);
     } else {
       setShowRegistration(true);
@@ -301,6 +306,14 @@ export const OnboardingScreen: React.FC = () => {
   const finishTutorial = () => {
     setShowTutorial(false);
     setShowLoading(true);
+    
+    // Сохраняем данные пользователя в store
+    if (onboardingData.height || onboardingData.prePregnancyWeight) {
+      dispatch(updateUserPhysicalData({
+        height: onboardingData.height,
+        prePregnancyWeight: onboardingData.prePregnancyWeight
+      }));
+    }
     
     // Simulate loading
     setTimeout(() => {
@@ -815,6 +828,190 @@ export const OnboardingScreen: React.FC = () => {
                 </View>
               </View>
 
+              {/* Поля рост и вес */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Твой рост и вес до беременности</Text>
+                <Text style={styles.registrationSubtitle}>Для персональных рекомендаций по здоровью</Text>
+                
+                {/* ЛУЧШИЙ UX: Выбор метода ввода веса */}
+                <View style={styles.weightMethodSelection}>
+                  <Text style={styles.weightMethodTitle}>⚖️ Как указать вес?</Text>
+                  
+                  <View style={styles.weightMethodOptions}>
+                    <TouchableOpacity 
+                      style={[
+                        styles.weightMethodOption,
+                        onboardingData.weightMethod === 'remember' && styles.selectedWeightMethod
+                      ]}
+                      onPress={() => setOnboardingData({...onboardingData, weightMethod: 'remember'})}
+                    >
+                      <FontAwesome5 name="brain" size={16} color="#10b981" />
+                      <View style={styles.weightMethodContent}>
+                        <Text style={styles.weightMethodLabel}>💭 Помню вес ДО беременности</Text>
+                        <Text style={styles.weightMethodDesc}>Самый точный расчет ИМТ</Text>
+                      </View>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={[
+                        styles.weightMethodOption,
+                        onboardingData.weightMethod === 'current' && styles.selectedWeightMethod
+                      ]}
+                      onPress={() => setOnboardingData({...onboardingData, weightMethod: 'current'})}
+                    >
+                      <FontAwesome5 name="calculator" size={16} color="#3b82f6" />
+                      <View style={styles.weightMethodContent}>
+                        <Text style={styles.weightMethodLabel}>📱 Знаю только текущий</Text>
+                        <Text style={styles.weightMethodDesc}>Система рассчитает приблизительно</Text>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Поля ввода в зависимости от выбора */}
+                {onboardingData.weightMethod && (
+                  <View style={styles.compactPhysicalData}>
+                    {/* Рост - всегда нужен */}
+                    <View style={styles.compactRow}>
+                      <Text style={styles.compactLabel}>📏 Рост:</Text>
+                      <View style={styles.compactControls}>
+                        <TouchableOpacity 
+                          style={styles.compactButton}
+                          onPress={() => setOnboardingData({
+                            ...onboardingData, 
+                            height: Math.max(140, (onboardingData.height || 165) - 1)
+                          })}
+                        >
+                          <FontAwesome5 name="minus" size={10} color="#6b7280" />
+                        </TouchableOpacity>
+                        
+                        <Text style={styles.compactValue}>{onboardingData.height || 165} см</Text>
+                        
+                        <TouchableOpacity 
+                          style={styles.compactButton}
+                          onPress={() => setOnboardingData({
+                            ...onboardingData, 
+                            height: Math.min(200, (onboardingData.height || 165) + 1)
+                          })}
+                        >
+                          <FontAwesome5 name="plus" size={10} color="#6b7280" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Вес ДО беременности (если помнит) */}
+                    {onboardingData.weightMethod === 'remember' && (
+                      <View style={styles.compactRow}>
+                        <Text style={styles.compactLabel}>⚖️ Вес ДО:</Text>
+                        <View style={styles.compactControls}>
+                          <TouchableOpacity 
+                            style={styles.compactButton}
+                            onPress={() => setOnboardingData({
+                              ...onboardingData, 
+                              prePregnancyWeight: Math.max(40, (onboardingData.prePregnancyWeight || 65) - 0.5)
+                            })}
+                          >
+                            <FontAwesome5 name="minus" size={10} color="#6b7280" />
+                          </TouchableOpacity>
+                          
+                          <Text style={styles.compactValue}>{onboardingData.prePregnancyWeight || 65} кг</Text>
+                          
+                          <TouchableOpacity 
+                            style={styles.compactButton}
+                            onPress={() => setOnboardingData({
+                              ...onboardingData, 
+                              prePregnancyWeight: Math.min(120, (onboardingData.prePregnancyWeight || 65) + 0.5)
+                            })}
+                          >
+                            <FontAwesome5 name="plus" size={10} color="#6b7280" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Текущий вес (если знает только его ИЛИ дополнительно к весу ДО) */}
+                    <View style={styles.compactRow}>
+                      <Text style={styles.compactLabel}>
+                        {onboardingData.weightMethod === 'remember' ? 
+                          '📱 Сейчас (опц):' : 
+                          '⚖️ Вес сейчас:'}
+                      </Text>
+                      <View style={styles.compactControls}>
+                        <TouchableOpacity 
+                          style={styles.compactButton}
+                          onPress={() => setOnboardingData({
+                            ...onboardingData, 
+                            currentWeight: Math.max(40, (onboardingData.currentWeight || 70) - 0.5)
+                          })}
+                        >
+                          <FontAwesome5 name="minus" size={10} color="#6b7280" />
+                        </TouchableOpacity>
+                        
+                        <Text style={[
+                          styles.compactValue,
+                          onboardingData.weightMethod === 'remember' && styles.optionalValue
+                        ]}>
+                          {onboardingData.currentWeight || (onboardingData.weightMethod === 'remember' ? '–' : '70')} {onboardingData.currentWeight || onboardingData.weightMethod === 'current' ? 'кг' : ''}
+                        </Text>
+                        
+                        <TouchableOpacity 
+                          style={styles.compactButton}
+                          onPress={() => setOnboardingData({
+                            ...onboardingData, 
+                            currentWeight: Math.min(120, (onboardingData.currentWeight || 70) + 0.5)
+                          })}
+                        >
+                          <FontAwesome5 name="plus" size={10} color="#6b7280" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Показываем расчеты и прибавку */}
+                    {onboardingData.weightMethod === 'current' && onboardingData.week && onboardingData.currentWeight && (
+                      <View style={styles.calculationInfo}>
+                        <FontAwesome5 name="calculator" size={12} color="#3b82f6" />
+                        <Text style={styles.calculationText}>
+                          Расчет: {onboardingData.currentWeight}кг - {Math.round((onboardingData.week * 0.3) * 10) / 10}кг = ~{Math.round(((onboardingData.currentWeight || 70) - (onboardingData.week * 0.3)) * 10) / 10}кг до беременности
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Показываем текущую прибавку если знаем оба веса */}
+                    {onboardingData.weightMethod === 'remember' && onboardingData.prePregnancyWeight && onboardingData.currentWeight && (
+                      <View style={styles.gainInfo}>
+                        <FontAwesome5 name="chart-line" size={12} color="#10b981" />
+                        <Text style={styles.gainText}>
+                          Прибавка: +{Math.round((onboardingData.currentWeight - onboardingData.prePregnancyWeight) * 10) / 10} кг на {onboardingData.week || 0} неделе
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* ИМТ на основе веса ДО беременности */}
+                    <View style={styles.bmiRow}>
+                      <FontAwesome5 name="heart" size={14} color="#ec4899" />
+                      <Text style={styles.bmiResultText}>
+                        ИМТ: {(() => {
+                          const h = onboardingData.height || 165;
+                          const w = onboardingData.weightMethod === 'remember' ? 
+                            (onboardingData.prePregnancyWeight || 65) : 
+                            ((onboardingData.currentWeight || 70) - ((onboardingData.week || 0) * 0.3));
+                          const bmi = w / Math.pow(h/100, 2);
+                          return Math.round(bmi * 10) / 10;
+                        })()} ({(() => {
+                          const h = onboardingData.height || 165;
+                          const w = onboardingData.weightMethod === 'remember' ? 
+                            (onboardingData.prePregnancyWeight || 65) : 
+                            ((onboardingData.currentWeight || 70) - ((onboardingData.week || 0) * 0.3));
+                          const bmi = w / Math.pow(h/100, 2);
+                          return bmi < 18.5 ? 'недовес' : bmi < 25 ? 'норма' : bmi < 30 ? 'избыток' : 'ожирение';
+                        })()}) 
+                        {onboardingData.weightMethod === 'current' ? ' (примерно)' : ''}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Что тебя больше всего интересует?</Text>
                 <View style={styles.interestsGrid}>
@@ -842,7 +1039,39 @@ export const OnboardingScreen: React.FC = () => {
             </View>
 
             <View style={styles.registrationFooter}>
-              <TouchableOpacity style={styles.completeButton} onPress={completeRegistration}>
+              <TouchableOpacity 
+                style={styles.completeButton} 
+                onPress={() => {
+                  // ЧЕСТНЫЙ расчет веса до беременности
+                  let finalPrePregnancyWeight = 65;
+                  
+                  if (onboardingData.weightMethod === 'remember') {
+                    // Пользователь помнит точный вес ДО беременности
+                    finalPrePregnancyWeight = onboardingData.prePregnancyWeight || 65;
+                  } else if (onboardingData.weightMethod === 'current') {
+                    // Пользователь указал текущий вес - вычисляем вес ДО
+                    const estimatedGain = (onboardingData.week || 0) * 0.3;
+                    finalPrePregnancyWeight = (onboardingData.currentWeight || 70) - estimatedGain;
+                  }
+                  
+                  // Сохраняем рассчитанный вес до беременности
+                  dispatch(updateUserPhysicalData({
+                    height: onboardingData.height || 165,
+                    prePregnancyWeight: Math.round(finalPrePregnancyWeight * 10) / 10
+                  }));
+                  
+                  // TODO: В будущем добавить сохранение currentWeight в дневник/календарь
+                  // if (onboardingData.currentWeight) {
+                  //   dispatch(addWeightEntry({
+                  //     week: onboardingData.week,
+                  //     weight: onboardingData.currentWeight
+                  //   }));
+                  // }
+                  
+                  // Завершаем весь онбординг (пропускаем подписки и тутorial)
+                  dispatch(setOnboardingCompleted(true));
+                }}
+              >
                 <LinearGradient
                   colors={['#ec4899', '#8b5cf6']}
                   start={{ x: 0, y: 0 }}
@@ -1357,6 +1586,7 @@ export const OnboardingScreen: React.FC = () => {
             </View>
           </LinearGradient>
         );
+
       default:
         return null;
     }
@@ -3088,5 +3318,171 @@ const styles = StyleSheet.create({
   },
   errorGroup: {
     borderColor: '#ef4444',
+  },
+  // Убраны старые стили для отдельных экранов 5-6
+  // Physical data styles for registration screen
+  // ПРОСТЫЕ и ЕСТЕСТВЕННЫЕ поля
+  compactPhysicalData: {
+    marginTop: 16,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  compactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  compactLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    flex: 1,
+  },
+  compactControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  compactButton: {
+    width: 28,
+    height: 28,
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  compactValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1f2937',
+    minWidth: 70,
+    textAlign: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+  },
+  bmiRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  bmiResultText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6366f1',
+  },
+  // Warning styles
+  weightWarning: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#fffbeb',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+  },
+  weightWarningText: {
+    fontSize: 12,
+    color: '#92400e',
+    flex: 1,
+    lineHeight: 16,
+  },
+  // Weight method selection styles
+  weightMethodSelection: {
+    marginTop: 16,
+  },
+  weightMethodTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  weightMethodOptions: {
+    gap: 12,
+  },
+  weightMethodOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    gap: 12,
+  },
+  selectedWeightMethod: {
+    borderColor: '#3b82f6',
+    backgroundColor: '#f0f9ff',
+  },
+  weightMethodContent: {
+    flex: 1,
+  },
+  weightMethodLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  weightMethodDesc: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  calculationInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#eff6ff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  calculationText: {
+    fontSize: 12,
+    color: '#1e40af',
+    flex: 1,
+    fontWeight: '500',
+  },
+  // Gain info styles
+  gainInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#f0fdf4',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  gainText: {
+    fontSize: 12,
+    color: '#15803d',
+    flex: 1,
+    fontWeight: '600',
+  },
+  // Optional value style
+  optionalValue: {
+    backgroundColor: '#f3f4f6',
+    borderColor: '#d1d5db',
+    borderStyle: 'dashed',
   },
 });

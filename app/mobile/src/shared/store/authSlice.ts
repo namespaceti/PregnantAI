@@ -8,7 +8,7 @@ interface AuthState {
 
 const initialState: AuthState = {
   isAuthenticated: false,
-  hasCompletedOnboarding: false,
+  hasCompletedOnboarding: false, // Для тестирования новых экранов онбординга
   isLoading: true, // Initially loading to check auth status
 };
 

@@ -18,6 +18,8 @@ export interface Pregnancy {
   isFirstPregnancy: boolean;
   week: number;       // derived
   day: number;        // derived
+  prePregnancyWeight?: number; // кг - вес до беременности для расчета ИМТ
+  height?: number;    // см - рост для расчета ИМТ
 }
 
 export interface Tip {
